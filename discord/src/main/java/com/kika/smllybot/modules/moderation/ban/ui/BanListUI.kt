@@ -61,8 +61,11 @@ class BanListUI {
                 val reason = if (item.reason != null) "\n**Причина:** ${item.reason}" else ""
                 val unbanned = if (item.removedBy != null) "\n**Разблокирован модератором:** <@${item.removedBy}>" else ""
                 val time = TimeUtil.getTimestamp(item.createdAt)
-                val timeRelative = if (item.active) TimeUtil.getTimestampRelative(item.until) else TimeUtil.getTimestampRelative(item.removedAt)
-                val active = if (item.active) "Окончится" else "Окончился"
+                val timeRelative = if (item.active && item.until != null) {
+                    TimeUtil.getTimestampRelative(item.until)
+                } else if (item.removedAt != null) TimeUtil.getTimestampRelative(item.removedAt) else ""
+                val active = if (item.active && item.until != null) "Окончится"
+                else if (!item.active && item.until != null || item.removedBy != null) "Окончился" else "Навсегда"
 
                 val text = """
                     |### $position. <@${item.discordId}> (IDD: `${item.discordId}`)
