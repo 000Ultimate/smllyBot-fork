@@ -18,6 +18,7 @@ import com.kika.smllybot.modules.moderation.mute.MuteService;
 import com.kika.smllybot.modules.ping.PrefixPing;
 import com.kika.smllybot.modules.ping.SlashPing;
 import com.kika.smllybot.other.slashCmdInfo;
+import com.kika.smllybot.schedule.BanScheduler;
 import com.kika.smllybot.schedule.MuteScheduler;
 import com.kika.smllybot.schedule.Stars;
 import net.dv8tion.jda.api.JDA;
@@ -52,12 +53,16 @@ public class Main implements EventListener {
     static void main() throws InterruptedException {
         Config.getInstance().load();
 
+        String token = Config.getInstance().getString("main.token");
+        if (token == null || token.isBlank() || token.equals("ТОКЕН") || token.equals("...")) {
+            log.error("❌ Токен бота не указан. Заполните main.token в config.toml и запустите бота снова");
+            return;
+        }
+
         DatabaseManager.init();
         JdbcTemplate query = DatabaseManager.getQuery();
 
         Stars.minusStarsScheduler();
-
-        String token = Config.getInstance().getString("main.token");
 
         List<?> configPrefixes = Config.getInstance().getList("main.prefix");
         PREFIXES = configPrefixes.stream()
@@ -93,6 +98,9 @@ public class Main implements EventListener {
                 banTable, banService
         );
 
+        // Запрет пингов должен действовать с самого начала, а не после awaitReady()
+        MessageRequest.setDefaultMentions(EnumSet.noneOf(Message.MentionType.class));
+
         MemberCachePolicy memberCachePolicy = Config.getInstance().getMemberCachePolicy("jda.cache_policy");
         JDA jda = JDABuilder.createDefault(token)
                 // Cache & Intents
@@ -118,12 +126,14 @@ public class Main implements EventListener {
                 .addEventListeners(manager)
                 .build();
 
-        MessageRequest.setDefaultMentions(EnumSet.noneOf(Message.MentionType.class));
         jda.awaitReady();
         slashCmdInfo.registerCommands(jda);
 
         MuteScheduler muteScheduler = new MuteScheduler(muteTable, jda);
         muteScheduler.start();
+
+        // Раньше BanScheduler нигде не запускался, из-за чего временные баны никогда не снимались
+        new BanScheduler(jda, banTable).start();
     }
 
     @Override

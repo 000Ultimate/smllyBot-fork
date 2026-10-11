@@ -10,6 +10,7 @@ import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 
 import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 
 public class MuteService {
 
@@ -23,15 +24,10 @@ public class MuteService {
                                Member moderator, String rawAmount, String unit, String reason) {
         Guild guild = event.getGuild();
 
-        if (!guild.getSelfMember().canInteract(target)) {
+        if (!guild.getSelfMember().canInteract(target) || !moderator.canInteract(target)) {
             ErrorThrow.smallPermission(event);
             return;
         }
-
-//        if (!moderator.canInteract(target)) {
-//            log.error("❌ Вы не можете замутить этого пользователя: Роль пользователя выше вашей роли.");
-//            return;
-//        }
 
         long amount;
         try {
@@ -42,6 +38,16 @@ public class MuteService {
         }
 
         OffsetDateTime until = TimeUtil.calculateUntil(amount, unit);
+        if (amount <= 0 || until == null) {
+            ErrorThrow.invalidTime(event, rawAmount + " " + unit);
+            return;
+        }
+
+        // Ограничение Discord на таймаут - 28 дней
+        if (until.isAfter(OffsetDateTime.now(ZoneOffset.UTC).plusDays(28))) {
+            ErrorThrow.timeoutOverhead(event);
+            return;
+        }
 
         target.timeoutUntil(until).reason(reason).queue(
                 success -> {
@@ -65,15 +71,10 @@ public class MuteService {
     protected void unMute(MessageReceivedEvent event, Member target, Member moderator) {
         Guild guild = event.getGuild();
 
-        if (!guild.getSelfMember().canInteract(target)) {
+        if (!guild.getSelfMember().canInteract(target) || !moderator.canInteract(target)) {
             ErrorThrow.smallPermission(event);
             return;
         }
-
-//        if (!moderator.canInteract(target)) {
-//            log.error("❌ Вы не можете замутить этого пользователя: Роль пользователя выше вашей роли.");
-//            return;
-//        }
 
         var response = MuteUI.unmute(target.getIdLong());
 

@@ -8,6 +8,7 @@ import net.dv8tion.jda.api.Permission;
 import net.dv8tion.jda.api.components.container.Container;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Member;
+import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 
@@ -48,17 +49,16 @@ public class Unban extends BaseCmd {
         String firstLine = matches[0].trim();
         String[] parts = firstLine.split("\\h+");
 
-        // Ответом на сообщение
-        if (event.getMessage().getReferencedMessage() != null) {
-            User target = event.getMessage().getReferencedMessage().getMember().getUser();
-
-            banService.unban(event, target, moderator);
+        // Ответом на сообщение (автор сообщения, а не участник: забаненного уже нет на сервере)
+        Message referenced = event.getMessage().getReferencedMessage();
+        if (referenced != null) {
+            banService.unban(event, referenced.getAuthor(), moderator);
             return null;
         }
 
-        // Упоминание -> @username
-        if (!event.getMessage().getMentions().getMembers().isEmpty()) {
-            User target = event.getMessage().getMentions().getMembers().getFirst().getUser();
+        // Упоминание -> @username. Берем users, а не members: забаненный не состоит в гильдии
+        if (!event.getMessage().getMentions().getUsers().isEmpty()) {
+            User target = event.getMessage().getMentions().getUsers().getFirst();
 
             banService.unban(event, target, moderator);
             return null;
@@ -71,10 +71,13 @@ public class Unban extends BaseCmd {
         String arg = parts[1];
 
         // ID -> 12345678910121314
-        if (arg.matches("\\d+")) {
+        // getUserById() возвращал null для пользователей не из кэша (а забаненные там почти всегда отсутствуют)
+        if (arg.matches("\\d{15,19}")) {
             long targetId = Long.parseLong(arg);
-            User target = event.getJDA().getUserById(targetId);
-            banService.unban(event, target, moderator);
+            event.getJDA().retrieveUserById(targetId).queue(
+                    target -> banService.unban(event, target, moderator),
+                    failure -> ErrorThrow.userNotFound(event, arg)
+            );
             return null;
         }
 

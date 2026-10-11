@@ -17,10 +17,9 @@ public class TestErrors extends BaseCmd {
 
     @Override
     public Container execute(MessageReceivedEvent event, String raw, String args) {
-        String[] arg = raw.trim().split("\\s+");
-
-        if (arg.length < 3) return null;
-        String argument = arg[2];
+        // Раньше брался arg[2] от всей строки (вместе с командой), поэтому "!debug undefined" не работала
+        if (args.isBlank()) return null;
+        String argument = args.trim().split("\\s+")[0];
 
         switch (argument.toLowerCase()) {
             case "noaccesspermission" -> ErrorThrow.noAccessPermission(event, Permission.BYPASS_SLOWMODE);

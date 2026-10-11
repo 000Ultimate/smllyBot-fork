@@ -63,6 +63,8 @@ public class Motto extends BaseCmd {
         String[] parts = raw.split("\\n+");
         if (parts.length > 1) {
             String motto = parts[1].replace("@", "\\@");
+            // Колонка motto - VARCHAR(255): без обрезки запись молча падала, а бот писал "обновлено"
+            if (motto.length() > 255) motto = motto.substring(0, 255);
             UsersTable.setMotto(discordId, motto);
             response(event, "\\✅ Описание обновлено");
         }

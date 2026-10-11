@@ -50,7 +50,9 @@ public class Config {
     }
 
     public double getFloat(String path) {
-        return config.getOrElse(path, 0.0);
+        // В toml число может быть записано как целое (например 5 вместо 5.0) - не падаем с ClassCastException
+        Number value = config.<Number>getOrElse(path, 0.0);
+        return value.doubleValue();
     }
 
     public boolean getBoolean(String path) {

@@ -27,7 +27,7 @@ public class Farm extends BaseCmd {
         int max = Config.getInstance().getInt("economy.max");
         int minMini = Config.getInstance().getInt("economy.min_mini");
         int maxMini = Config.getInstance().getInt("economy.max_mini");
-        int minLarge = Config.getInstance().getInt("economy.min_mini");
+        int minLarge = Config.getInstance().getInt("economy.min_large");
         int maxLarge = Config.getInstance().getInt("economy.max_large");
         double chanceLossReward = Config.getInstance().getFloat("economy.chances.loss_reward");
         double chanceMiniReward = Config.getInstance().getFloat("economy.chances.mini_reward");
@@ -45,7 +45,7 @@ public class Farm extends BaseCmd {
         currentSum += chanceLargeReward;
         if (roll < currentSum) return ThreadLocalRandom.current().nextInt(minLarge, maxLarge + 1);
 
-        return ThreadLocalRandom.current().nextInt(min, max);
+        return ThreadLocalRandom.current().nextInt(min, max + 1);
     }
 
     @Override

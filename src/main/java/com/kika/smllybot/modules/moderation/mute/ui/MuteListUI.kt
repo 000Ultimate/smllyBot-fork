@@ -61,10 +61,15 @@ class MuteListUI {
             component.add(header)
             pageItems.forEachIndexed { index, item ->
                 val position = skip + index + 1
-                val reason = item.reason ?: "Без причины"
+                val reason = (item.reason ?: "Без причины").take(150)
                 val time = TimeUtil.getTimestamp(item.createdAt)
-                val timeRelative = if (item.active) TimeUtil.getTimestampRelative(item.until) else TimeUtil.getTimestampRelative(item.removedAt)
-                val active = if (item.active) "Окончится" else "Окончился"
+                val endTime = if (item.active) item.until else item.removedAt
+                val timeRelative = if (endTime != null) TimeUtil.getTimestampRelative(endTime) else "никогда"
+                val active = when {
+                    item.active && endTime == null -> "Срок:"
+                    item.active -> "Окончится"
+                    else -> "Окончился"
+                }
 
                 val text = """
                     ### $position. <@${item.discordId}> (IDD: `${item.discordId}`)
@@ -73,7 +78,7 @@ class MuteListUI {
                     **Модератор:** <@${item.byDiscordId}> `${item.byDiscordId}`
                 """.trimIndent()
                 val main: ContainerChildComponent = Section.of(
-                    Button.primary("id:$position", "ℹ️ Подробнее"),
+                    Button.primary("id:$position", "ℹ️ Подробнее").asDisabled(),
                     TextDisplay.of(text)
                 )
 

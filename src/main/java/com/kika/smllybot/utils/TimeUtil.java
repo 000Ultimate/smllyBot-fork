@@ -3,6 +3,7 @@ package com.kika.smllybot.utils;
 import net.dv8tion.jda.api.utils.TimeFormat;
 import org.jetbrains.annotations.Nullable;
 
+import java.time.DateTimeException;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.OffsetDateTime;
@@ -95,22 +96,27 @@ public class TimeUtil {
     }
 
     public static OffsetDateTime calculateUntil(Long rawTime, String type) {
-        OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
-
-        if (type == null) {
+        if (type == null || rawTime == null) {
             return null;
         }
 
-        return switch (type.toLowerCase().trim()) {
-            case "год", "года", "лет", "г", "л" -> now.plusYears(rawTime);
-            case "месяц", "месяца", "месяцев", "мес" -> now.plusMonths(rawTime);
-            case "неделю", "недели", "недель", "нед" -> now.plusWeeks(rawTime);
-            case "день", "дня", "дней", "д" -> now.plusDays(rawTime);
-            case "час", "часа", "часов", "ч" -> now.plusHours(rawTime);
-            case "минуту", "минуты", "минут", "м" -> now.plusMinutes(rawTime);
-            case "секунду", "секунды", "секунд", "с" -> now.plusSeconds(rawTime);
-            default -> null;
-        };
+        OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
+
+        try {
+            return switch (type.toLowerCase().trim()) {
+                case "год", "года", "лет", "г", "л" -> now.plusYears(rawTime);
+                case "месяц", "месяца", "месяцев", "мес" -> now.plusMonths(rawTime);
+                case "неделю", "неделя", "недели", "недель", "нед" -> now.plusWeeks(rawTime);
+                case "день", "дня", "дней", "д", "дн" -> now.plusDays(rawTime);
+                case "час", "часа", "часов", "ч" -> now.plusHours(rawTime);
+                case "минуту", "минута", "минуты", "минут", "м", "мин" -> now.plusMinutes(rawTime);
+                case "секунду", "секунда", "секунды", "секунд", "с", "сек" -> now.plusSeconds(rawTime);
+                default -> null;
+            };
+        } catch (DateTimeException | ArithmeticException e) {
+            // Слишком большое число (например 99999999999 лет) - считаем время неверным
+            return null;
+        }
     }
 
 }

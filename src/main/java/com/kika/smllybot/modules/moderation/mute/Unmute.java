@@ -75,7 +75,7 @@ public class Unmute extends BaseCmd {
         String arg = parts[1];
 
         // ID -> 12345678910121314
-        if (arg.matches("\\d+")) {
+        if (arg.matches("\\d{15,19}")) {
             long targetId = Long.parseLong(arg);
             guild.retrieveMemberById(targetId).queue(
                     target -> {
@@ -95,7 +95,7 @@ public class Unmute extends BaseCmd {
         if (!members.isEmpty()) {
             muteService.unMute(event, members.getFirst(), moderator);
         } else {
-            ErrorThrow.userNotFound(event, members.getFirst().getNickname());
+            ErrorThrow.userNotFound(event, arg);
         }
 
         return null;

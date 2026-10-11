@@ -10,7 +10,7 @@ public class MessageCounter extends ListenerAdapter {
 
     @Override
     public void onMessageReceived(MessageReceivedEvent event) {
-        if (event.getMessage().getAuthor().isBot()) return;
+        if (event.getMessage().getAuthor().isBot() || event.isWebhookMessage()) return;
 
         long discordId;
         long guildId;

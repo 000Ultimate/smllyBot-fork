@@ -104,6 +104,7 @@ public class MuteTable {
         String sql = """
                 SELECT * FROM mute
                 WHERE guild_id = ?
+                ORDER BY created_at DESC, id DESC
                 """;
 
         return query.query(sql, MUTE_MAPPER, guildId);

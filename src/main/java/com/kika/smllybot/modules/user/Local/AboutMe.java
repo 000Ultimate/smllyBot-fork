@@ -79,6 +79,8 @@ public class AboutMe extends BaseCmd {
         if (parts.length > 1) {
             ProfileTable.getOrCreateProfile(user.getId(), guildId, name, event.getMember().getTimeJoined());
             String aboutMe = parts[1].replace("@", "\\@");
+            // Колонка about_me - VARCHAR(255): без обрезки запись падала в БД, а бот отвечал "обновлено"
+            if (aboutMe.length() > 255) aboutMe = aboutMe.substring(0, 255);
             ProfileTable.setAboutMe(user.getId(), guildId, aboutMe);
 
             AboutMeContext context = new AboutMeContext("## \\✅ О себе обновлено", aboutMe, discordId);

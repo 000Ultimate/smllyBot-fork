@@ -46,7 +46,7 @@ public class GuildTable {
         JdbcTemplate query = DatabaseManager.getQuery();
         String upsertSql = """
                 INSERT INTO guild (id, title) VALUES (?, ?)
-                ON CONFLICT (id) DO UPDATE SET id = EXCLUDED.id
+                ON CONFLICT (id) DO UPDATE SET title = EXCLUDED.title
                 RETURNING id, title, staging, mute_type, mute_role;
                 """;
 

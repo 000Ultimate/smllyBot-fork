@@ -91,6 +91,7 @@ public class BanTable {
         String sql = """
                 SELECT * FROM ban
                 WHERE guild_id = ?
+                ORDER BY created_at DESC, id DESC
                 """;
 
         return query.query(sql, BAN_MAPPER, guildId);

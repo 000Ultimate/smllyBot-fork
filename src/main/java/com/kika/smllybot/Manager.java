@@ -95,7 +95,7 @@ public class Manager extends ListenerAdapter {
         reg(new Staging());
 
         // Интерактивные команды
-        reg(new Hug(), new Bite(), new Burn(), new Cuddle(), new Five(), new Fuck(), new Five(), new Fuckin(),
+        reg(new Hug(), new Bite(), new Burn(), new Cuddle(), new Five(), new Fuck(), new Fuckin(),
                 new Furryfication(), new GigaHit(), new Hit(), new Hold(), new Kick(), new Kill(), new Kiss(),
                 new Lick(), new Pat(), new Press(), new Shoot(), new Slap(), new SlapBack(), new Spank(),
                 new Tickle(), new Tie(), new Suck(), new Inseminate());
@@ -114,7 +114,11 @@ public class Manager extends ListenerAdapter {
         for (BaseCmd cmd : cmds) {
             // Регистрация команд
             for (String alias : cmd.getAliases()) {
-                commands.put(alias.toLowerCase(), cmd);
+                BaseCmd previous = commands.put(alias.toLowerCase(), cmd);
+                if (previous != null && previous != cmd) {
+                    log.warn("🟡 Алиас '{}' используется сразу в двух командах: {} и {}",
+                            alias, previous.getClass().getSimpleName(), cmd.getClass().getSimpleName());
+                }
             }
             // Регистрация кнопочек
             for (Method method : cmd.getClass().getDeclaredMethods()) {
@@ -145,7 +149,6 @@ public class Manager extends ListenerAdapter {
     @Override
     public void onButtonInteraction(ButtonInteractionEvent event) {
         String[] parts = event.getComponentId().split(":");
-        Interaction.checkOwner(event, parts);
         if (parts.length == 0) return;
 
         String prefix = parts[0].toLowerCase();
@@ -154,10 +157,13 @@ public class Manager extends ListenerAdapter {
         log.debug("🪛 Доступные кнопки в памяти: {}", button.keySet());
 
         RegisteredButton handler = button.get(prefix);
+        if (handler == null) return;
 
-        if (handler != null) {
-            handler.invoke(event, parts);
-        }
+        // Раньше результат проверки игнорировался: чужая кнопка получала отказ, но обработчик
+        // все равно выполнялся (например, можно было переключить чужие настройки)
+        if (!Interaction.checkOwner(event, parts)) return;
+
+        handler.invoke(event, parts);
     }
 
     @Override
@@ -201,7 +207,11 @@ public class Manager extends ListenerAdapter {
 
         if (cmd != null) {
             String arg = commandBody.substring(commandName.length()).stripLeading().trim();
-            cmd.execute(event, command, arg);
+            try {
+                cmd.execute(event, command, arg);
+            } catch (Exception e) {
+                log.error("❌ Ошибка при выполнении команды '{}': ", commandName, e);
+            }
         }
     }
 }

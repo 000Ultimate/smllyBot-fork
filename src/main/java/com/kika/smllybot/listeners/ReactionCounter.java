@@ -14,8 +14,6 @@ public class ReactionCounter extends ListenerAdapter {
 
     @Override
     public void onMessageReactionAdd(@NotNull MessageReactionAddEvent event) {
-        if (event.getUser().isBot()) return;
-
         long reactorId = event.getUserIdLong();
         long authorId = event.getMessageAuthorIdLong();
 
@@ -24,26 +22,35 @@ public class ReactionCounter extends ListenerAdapter {
             return;
         }
 
-        if (reactorId != authorId) {
+        if (reactorId == authorId) return;
+
+        // event.getUser() может быть null, если пользователь не в кэше (политика кэша ONLINE),
+        // поэтому используем retrieveUser() - для кэшированных пользователей он не делает запрос
+        event.retrieveUser().queue(user -> {
+            if (user.isBot()) return;
+
             log.info("ℹ️ Пользователю {} поставили реакцию", authorId);
             UsersTable.plusReaction(authorId);
-        }
+        });
     }
 
     @Override
-    public void onMessageReactionRemove(MessageReactionRemoveEvent event) {
+    public void onMessageReactionRemove(@NotNull MessageReactionRemoveEvent event) {
         long reactorId = event.getUserIdLong();
-        if (event.getUser().isBot()) return;
 
-        event.getChannel().retrieveMessageById(event.getMessageIdLong()).queue(
-            message -> {
-                long authorId = message.getAuthor().getIdLong();
+        event.retrieveUser().queue(user -> {
+            if (user.isBot()) return;
 
-                if (authorId != reactorId && authorId != 0) {
-                    log.info("ℹ️ Пользователю {} убрали реакцию", authorId);
-                    UsersTable.minusReaction(authorId);
+            event.getChannel().retrieveMessageById(event.getMessageIdLong()).queue(
+                message -> {
+                    long authorId = message.getAuthor().getIdLong();
+
+                    if (authorId != reactorId && authorId != 0) {
+                        log.info("ℹ️ Пользователю {} убрали реакцию", authorId);
+                        UsersTable.minusReaction(authorId);
+                    }
                 }
-            }
-        );
+            );
+        });
     }
 }

@@ -58,11 +58,21 @@ class BanListUI {
             component.add(header)
             pageItems.forEachIndexed { index, item ->
                 val position = skip + index + 1
-                val reason = if (item.reason != null) "\n**Причина:** ${item.reason}" else ""
+                // Лимит Components V2 - 4000 символов текста на сообщение, поэтому длинные причины обрезаем
+                val rawReason = item.reason
+                val reason = if (rawReason != null) {
+                    "\n**Причина:** ${rawReason.take(150)}${if (rawReason.length > 150) "…" else ""}"
+                } else ""
                 val unbanned = if (item.removedBy != null) "\n**Разблокирован модератором:** <@${item.removedBy}>" else ""
                 val time = TimeUtil.getTimestamp(item.createdAt)
-                val timeRelative = if (item.active) TimeUtil.getTimestampRelative(item.until) else TimeUtil.getTimestampRelative(item.removedAt)
-                val active = if (item.active) "Окончится" else "Окончился"
+                // У вечного бана until == null: раньше это приводило к NullPointerException и банлист не открывался
+                val endTime = if (item.active) item.until else item.removedAt
+                val timeRelative = if (endTime != null) TimeUtil.getTimestampRelative(endTime) else "никогда"
+                val active = when {
+                    item.active && endTime == null -> "Срок:"
+                    item.active -> "Окончится"
+                    else -> "Окончился"
+                }
 
                 val text = """
                     |### $position. <@${item.discordId}> (IDD: `${item.discordId}`)
@@ -70,7 +80,7 @@ class BanListUI {
                     |**Модератор:** <@${item.byDiscordId}> `${item.byDiscordId}`$unbanned
                     |""".trimMargin()
                 val main: ContainerChildComponent = Section.of(
-                    Button.primary("id:$position", "ℹ️ Подробнее"),
+                    Button.primary("id:$position", "ℹ️ Подробнее").asDisabled(),
                     TextDisplay.of(text)
                 )
 

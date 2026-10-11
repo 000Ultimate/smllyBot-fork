@@ -54,20 +54,16 @@ public class Mute extends BaseCmd {
 
         String reason = (matches.length >= 2 && !matches[1].isBlank()) ? matches[1].trim() : null;
 
-        // Ответом на сообщение
+        // Ответом на сообщение: мут [время] [единица]
         if (event.getMessage().getReferencedMessage() != null) {
             Member target = event.getMessage().getReferencedMessage().getMember();
             if (target == null) {
                 log.error("❌ Не удалось получить участника из отвеченного сообщения.");
+                ErrorThrow.userNotFound(event, "");
                 return null;
             }
 
-            if (parts.length < 3) {
-                ErrorThrow.timeoutOverhead(event);
-                return null;
-            }
-
-            muteService.mute(event, target, moderator, parts[1], parts[2], reason);
+            executeMute(event, target, moderator, parts, 1, reason);
             return null;
         }
 
@@ -75,12 +71,7 @@ public class Mute extends BaseCmd {
         if (!event.getMessage().getMentions().getMembers().isEmpty()) {
             Member target = event.getMessage().getMentions().getMembers().getFirst();
 
-            if (parts.length < 4) {
-                ErrorThrow.timeoutOverhead(event);
-                return null;
-            }
-
-            muteService.mute(event, target, moderator, parts[2], parts[3], reason);
+            executeMute(event, target, moderator, parts, 2, reason);
             return null;
         }
 
@@ -91,16 +82,10 @@ public class Mute extends BaseCmd {
         String arg = parts[1];
 
         // ID -> 12345678910121314
-        if (arg.matches("\\d+")) {
+        if (arg.matches("\\d{15,19}")) {
             long targetId = Long.parseLong(arg);
             guild.retrieveMemberById(targetId).queue(
-                    target -> {
-                        if (parts.length < 4) {
-                            ErrorThrow.timeoutOverhead(event);
-                            return;
-                        }
-                        muteService.mute(event, target, moderator, parts[2], parts[3], reason);
-                    },
+                    target -> executeMute(event, target, moderator, parts, 2, reason),
                     failure -> ErrorThrow.userNotFound(event, arg)
             );
             return null;
@@ -113,16 +98,24 @@ public class Mute extends BaseCmd {
         }
 
         if (!members.isEmpty()) {
-            if (parts.length < 4) {
-                ErrorThrow.timeoutOverhead(event);
-                return null;
-            }
-            muteService.mute(event, members.getFirst(), moderator, parts[2], parts[3], reason);
+            executeMute(event, members.getFirst(), moderator, parts, 2, reason);
         } else {
-            ErrorThrow.userNotFound(event, members.getFirst().getNickname());
+            // Раньше здесь вызывался members.getFirst() на пустом списке -> NoSuchElementException
+            ErrorThrow.userNotFound(event, arg);
         }
 
         return null;
+    }
+
+    // Для мута время обязательно: нужны и число, и единица измерения
+    private void executeMute(MessageReceivedEvent event, Member target, Member moderator,
+                             String[] parts, int timeIndex, String reason) {
+        if (parts.length <= timeIndex + 1) {
+            ErrorThrow.invalidTime(event, parts.length > timeIndex ? parts[timeIndex] : null);
+            return;
+        }
+
+        muteService.mute(event, target, moderator, parts[timeIndex], parts[timeIndex + 1], reason);
     }
 
 }

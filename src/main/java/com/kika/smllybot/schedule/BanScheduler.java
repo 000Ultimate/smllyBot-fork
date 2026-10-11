@@ -5,6 +5,8 @@ import com.kika.smllybot.database.sql.ban.dto.BanData;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.UserSnowflake;
+import net.dv8tion.jda.api.exceptions.ErrorResponseException;
+import net.dv8tion.jda.api.requests.ErrorResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -16,12 +18,11 @@ import java.util.concurrent.TimeUnit;
 public class BanScheduler {
 
     private static final Logger log = LoggerFactory.getLogger(BanScheduler.class);
-    private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
+    private final ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
     private final JDA jda;
     private final BanTable banTable;
 
-
-    BanScheduler(JDA jda, BanTable banTable) {
+    public BanScheduler(JDA jda, BanTable banTable) {
         this.jda = jda;
         this.banTable = banTable;
     }
@@ -37,22 +38,31 @@ public class BanScheduler {
             for (BanData ban : expiredBans) {
                 Guild guild = jda.getGuildById(ban.getGuildId());
 
-                if (guild != null) {
-                    jda.retrieveUserById(ban.getDiscordId()).queue(
-                            user -> guild.unban(user).queue(
-                                    success -> {
-                                        banTable.markAsUnbanned(ban.getId(), null, ban.getGuildId());
-                                        log.info("✅ Пользователь {} разбанен", ban.getDiscordId());
-                                    },
-                                    throwable ->
-                                            log.error("❌ Не удалось разблокировать пользователя: {}", throwable.getMessage())
-                            ),
-                            throwable -> {
-                                log.error("❌ Пользователь не найден: {}", throwable.getMessage());
-                            }
-                    );
+                if (guild == null) {
+                    banTable.markAsUnbanned(ban.getDiscordId(), null, ban.getGuildId());
+                    continue;
                 }
-                if (guild == null) banTable.markAsUnbanned(ban.getId(), null, ban.getGuildId());
+
+                // markAsUnbanned принимает discord_id, а не id строки в таблице ban
+                guild.unban(UserSnowflake.fromId(ban.getDiscordId()))
+                        .reason("⏳ Истек срок блокировки")
+                        .queue(
+                                success -> {
+                                    banTable.markAsUnbanned(ban.getDiscordId(), null, ban.getGuildId());
+                                    log.info("✅ Пользователь {} разбанен", ban.getDiscordId());
+                                },
+                                error -> {
+                                    // Пользователя уже разбанили вручную - просто закрываем запись, иначе она
+                                    // будет вечно проверяться каждые 30 секунд
+                                    if (error instanceof ErrorResponseException e
+                                            && e.getErrorResponse() == ErrorResponse.UNKNOWN_BAN) {
+                                        banTable.markAsUnbanned(ban.getDiscordId(), null, ban.getGuildId());
+                                    } else {
+                                        log.error("❌ Не удалось разблокировать пользователя {}: {}",
+                                                ban.getDiscordId(), error.getMessage());
+                                    }
+                                }
+                        );
             }
         } catch (Exception e) {
             log.error("❌ Ошибка при проверке на истекшие баны: ", e);

@@ -1,10 +1,13 @@
 package com.kika.smllybot.schedule;
 
+import com.kika.smllybot.database.sql.guild.GuildTable;
+import com.kika.smllybot.database.sql.guild.dto.GuildData;
 import com.kika.smllybot.database.sql.mute.MuteTable;
 import com.kika.smllybot.database.sql.mute.dto.MuteData;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Member;
+import net.dv8tion.jda.api.entities.Role;
 import org.jetbrains.annotations.UnknownNullability;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -38,15 +41,14 @@ public class MuteScheduler {
             for (MuteData mute : expiredMutes) {
                 Guild guild = jda.getGuildById(mute.getGuildId());
                 if (guild == null) {
-                    muteTable.markAsUnmuted(mute.getId(), null, mute.getGuildId());
+                    muteTable.markAsUnmuted(mute.getDiscordId(), null, mute.getGuildId());
                     continue;
                 }
 
+                // markAsUnmuted принимает discord_id, а не id строки в таблице mute
                 guild.retrieveMemberById(mute.getDiscordId()).queue(
                         member -> processUnmute(guild, member, mute),
-                        throwable -> {
-                            muteTable.markAsUnmuted(mute.getId(), null, mute.getGuildId());
-                        }
+                        throwable -> muteTable.markAsUnmuted(mute.getDiscordId(), null, mute.getGuildId())
                 );
             }
         } catch (Exception e) {
@@ -59,9 +61,28 @@ public class MuteScheduler {
             guild.removeTimeout(member)
                     .reason("⏳ Истекло время мута")
                     .queue(
-                            success -> muteTable.markAsUnmuted(mute.getId(), null, mute.getGuildId()),
-                            error -> muteTable.markAsUnmuted(mute.getId(), null, mute.getGuildId())
+                            success -> muteTable.markAsUnmuted(mute.getDiscordId(), null, mute.getGuildId()),
+                            error -> muteTable.markAsUnmuted(mute.getDiscordId(), null, mute.getGuildId())
                     );
+            return;
         }
+
+        // Мут ролью: снимаем роль мута (если она настроена) и в любом случае закрываем запись,
+        // иначе она будет проверяться бесконечно
+        GuildData guildData = GuildTable.getOrCreateGuild(guild.getIdLong(), guild.getName());
+        Long muteRoleId = guildData != null ? guildData.getMuteRole() : null;
+        Role muteRole = muteRoleId != null ? guild.getRoleById(muteRoleId) : null;
+
+        if (muteRole == null) {
+            muteTable.markAsUnmuted(mute.getDiscordId(), null, mute.getGuildId());
+            return;
+        }
+
+        guild.removeRoleFromMember(member, muteRole)
+                .reason("⏳ Истекло время мута")
+                .queue(
+                        success -> muteTable.markAsUnmuted(mute.getDiscordId(), null, mute.getGuildId()),
+                        error -> muteTable.markAsUnmuted(mute.getDiscordId(), null, mute.getGuildId())
+                );
     }
 }

@@ -39,7 +39,26 @@ public class ErrorThrow {
         createErrorMessage(
                 event,
                 "## \\❌ Ваша роль или роль бота ниже",
-                "Вы или бот не могут замутить пользователя выше своей роли"
+                "Вы или бот не можете применить наказание к пользователю, чья роль выше или равна вашей"
+        );
+    }
+
+    public static void invalidTime(MessageReceivedEvent event, String input) {
+        String entered = (input == null || input.isBlank()) ? ""
+                : "\nБыло введено -> `%s`".formatted(input.replace("@", "\\@").replace("`", "'"));
+
+        createErrorMessage(
+                event,
+                "## \\❌ Неверно указано время",
+                "Укажите срок числом и единицей измерения, например: `10 минут`, `2 часа`, `1 день`" + entered
+        );
+    }
+
+    public static void notBanned(MessageReceivedEvent event, long userId) {
+        createErrorMessage(
+                event,
+                "## \\❌ Пользователь не заблокирован",
+                "Пользователь с ID `%d` не находится в списке блокировок этой гильдии".formatted(userId)
         );
     }
 
@@ -58,7 +77,7 @@ public class ErrorThrow {
         createErrorMessage(
                 event,
                 "## \\❌ Пользователь не найден",
-                "Пытались найти: " + user
+                "Пытались найти: " + (user == null ? "" : user.replace("@", "\\@"))
         );
     }
 

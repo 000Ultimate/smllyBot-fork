@@ -97,7 +97,7 @@ public class BankTable {
 
         try {
             return DatabaseManager.getQuery().query(sql, (rs, rowNum) -> new BankTopAmount(
-                    rs.getInt("id"),
+                    rs.getLong("id"),
                     rs.getString("username"),
                     rs.getLong("iris_coin")
             ));

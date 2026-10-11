@@ -49,6 +49,14 @@ public class Staging extends BaseCmd {
     @ButtonPrefix(prefix = "staging")
     public void onButton(ButtonInteractionEvent event, String[] args) {
         String[] parts = event.getComponentId().split(":");
+
+        // Права проверяем и при нажатии: администратора могли лишить прав после отправки сообщения
+        if (event.getGuild() == null || event.getMember() == null
+                || !event.getMember().hasPermission(Permission.ADMINISTRATOR)) {
+            event.reply("\\❌ Нужны права администратора").setEphemeral(true).queue();
+            return;
+        }
+
         long guildId = event.getGuild().getIdLong();
 
         if (parts[1].equals("on")) {

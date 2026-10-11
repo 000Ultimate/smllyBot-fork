@@ -1,10 +1,8 @@
 package com.kika.smllybot.modules.moderation.ban;
 
-import com.kika.smllybot.database.sql.Repository;
 import com.kika.smllybot.database.sql.guild.GuildTable;
 import com.kika.smllybot.database.sql.guild.dto.GuildData;
 import com.kika.smllybot.handler.ErrorThrow;
-import com.kika.smllybot.modules.moderation.mute.MuteService;
 import com.kika.smllybot.other.BaseCmd;
 import net.dv8tion.jda.api.Permission;
 import net.dv8tion.jda.api.components.container.Container;
@@ -51,17 +49,15 @@ public class Ban extends BaseCmd {
 
         String reason = (matches.length >= 2 && !matches[1].isBlank()) ? matches[1].trim() : null;
 
-        // Ответом на сообщение
+        // Ответом на сообщение: бан [время] [единица]
         if (event.getMessage().getReferencedMessage() != null) {
             Member target = event.getMessage().getReferencedMessage().getMember();
             if (target == null) {
-                ErrorThrow.userNotFound(event, null);
+                ErrorThrow.userNotFound(event, "");
                 return null;
             }
 
-            if (parts.length < 3 || parts[1].isBlank()) banService.ban(event, target, moderator, null, null, reason);
-            else banService.ban(event, target, moderator, parts[1], parts[2], reason);
-
+            executeBan(event, target, moderator, parts, 1, reason);
             return null;
         }
 
@@ -69,10 +65,7 @@ public class Ban extends BaseCmd {
         if (!event.getMessage().getMentions().getMembers().isEmpty()) {
             Member target = event.getMessage().getMentions().getMembers().getFirst();
 
-            if (parts.length < 4 || parts[2].isBlank()) banService.ban(event, target, moderator, null, null, reason);
-            else banService.ban(event, target, moderator, parts[2], parts[3], reason);
-
-            banService.ban(event, target, moderator, parts[2], parts[3], reason);
+            executeBan(event, target, moderator, parts, 2, reason);
             return null;
         }
 
@@ -83,14 +76,10 @@ public class Ban extends BaseCmd {
         String arg = parts[1];
 
         // ID -> 12345678910121314
-        if (arg.matches("\\d+")) {
+        if (arg.matches("\\d{15,19}")) {
             long targetId = Long.parseLong(arg);
             guild.retrieveMemberById(targetId).queue(
-                    target -> {
-                        if (parts.length < 4 || parts[2].isBlank()) banService.ban(event, target,
-                                moderator, null, null, reason);
-                        else banService.ban(event, target, moderator, parts[2], parts[3], reason);
-                    },
+                    target -> executeBan(event, target, moderator, parts, 2, reason),
                     failure -> ErrorThrow.userNotFound(event, arg)
             );
             return null;
@@ -103,14 +92,31 @@ public class Ban extends BaseCmd {
         }
 
         if (!members.isEmpty()) {
-            if (parts.length < 4 && parts[2].isBlank()) banService.ban(event, members.getFirst(),
-                    moderator, null, null, reason);
-            else banService.ban(event, members.getFirst(), moderator, parts[2], parts[3], reason);
+            executeBan(event, members.getFirst(), moderator, parts, 2, reason);
         } else {
-            ErrorThrow.userNotFound(event, "");
+            ErrorThrow.userNotFound(event, arg);
         }
 
         return null;
+    }
+
+    // Время необязательно: без него бан выдается навсегда. Если число указано без единицы - это ошибка
+    private void executeBan(MessageReceivedEvent event, Member target, Member moderator,
+                            String[] parts, int timeIndex, String reason) {
+        String amount = null;
+        String unit = null;
+
+        if (parts.length > timeIndex && !parts[timeIndex].isBlank()) {
+            amount = parts[timeIndex];
+
+            if (parts.length <= timeIndex + 1 || parts[timeIndex + 1].isBlank()) {
+                ErrorThrow.invalidTime(event, amount);
+                return;
+            }
+            unit = parts[timeIndex + 1];
+        }
+
+        banService.ban(event, target, moderator, amount, unit, reason);
     }
 
 }

@@ -10,7 +10,7 @@ data class MuteData(
     val byDiscordId: Long,
     val reason: String?,
     val createdAt: OffsetDateTime,
-    val until: OffsetDateTime,
+    val until: OffsetDateTime?,
     val removedAt: OffsetDateTime?,
     val removedBy: Long?,
     val active: Boolean
