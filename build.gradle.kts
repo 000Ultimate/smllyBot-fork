@@ -41,6 +41,8 @@ tasks.withType<KotlinCompile> {
 }
 
 dependencies {
+    implementation(project(":telegram"))
+    implementation(project(":discord"))
     implementation("org.flywaydb:flyway-core:10.8.0")
     implementation("org.flywaydb:flyway-database-postgresql:10.8.0")
     implementation("org.jetbrains.lets-plot:lets-plot-kotlin-jvm:4.15.0")
