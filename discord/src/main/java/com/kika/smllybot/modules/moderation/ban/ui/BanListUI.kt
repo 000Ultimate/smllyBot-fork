@@ -67,9 +67,9 @@ class BanListUI {
                 val time = TimeUtil.getTimestamp(item.createdAt)
                 // У вечного бана until == null: раньше это приводило к NullPointerException и банлист не открывался
                 val endTime = if (item.active) item.until else item.removedAt
-                val timeRelative = if (endTime != null) TimeUtil.getTimestampRelative(endTime) else "никогда"
+                val timeRelative = if (endTime != null) TimeUtil.getTimestampRelative(endTime) else ""
                 val active = when {
-                    item.active && endTime == null -> "Срок:"
+                    item.active && endTime == null -> "Навсегда"
                     item.active -> "Окончится"
                     else -> "Окончился"
                 }
